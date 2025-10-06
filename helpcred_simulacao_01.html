@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Helpcred — Simulação de Empréstimo no Cartão</title>
+  <style>
+    :root{
+      --bg:#0f172a;          /* slate-900 */
+      --card:#111827;        /* gray-900 */
+      --muted:#94a3b8;       /* slate-400 */
+      --text:#e5e7eb;        /* gray-200 */
+      --brand:#22c55e;       /* green-500 */
+      --accent:#38bdf8;      /* sky-400 */
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 20% -10%, #1e293b 0%, transparent 60%),
+                  radial-gradient(1000px 500px at 120% 10%, #0ea5e9 0%, transparent 60%),
+                  var(--bg);
+      color:var(--text);
+      display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .wrap{width:100%; max-width:740px}
+    .title{
+      text-align:center; margin:0 0 20px; line-height:1.2;
+      font-weight:800; letter-spacing:.5px; text-transform:uppercase;
+    }
+    .title span{display:block}
+    .brand{font-size: clamp(28px, 5vw, 40px); color:#fff}
+    .subtitle{font-size: clamp(14px, 2.6vw, 18px); color: var(--muted)}
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(148,163,184,.18);
+      border-radius:24px; padding:22px; box-shadow: 0 10px 40px rgba(0,0,0,.35);
+      backdrop-filter: blur(8px);
+    }
+
+    .form{display:grid; grid-template-columns: 1fr; gap:16px}
+    @media (min-width:680px){ .form{grid-template-columns: 1fr 1fr} }
+
+    label{font-size:14px; color:var(--muted); margin-bottom:6px; display:block}
+    .input, .select{
+      width:100%; padding:14px 16px; border-radius:14px;
+      background:#0b1220; color:#f1f5f9; border:1px solid rgba(148,163,184,.28);
+      outline:none; font-size:16px;
+    }
+    .input:focus, .select:focus{ border-color: var(--accent); box-shadow:0 0 0 3px rgba(56,189,248,.25)}
+
+    .results{
+      display:grid; grid-template-columns: 1fr; gap:12px; margin-top:18px
+    }
+    @media (min-width:680px){ .results{grid-template-columns: 1fr 1fr 1fr} }
+
+    .stat{
+      background:#0b1220; border:1px solid rgba(148,163,184,.22); border-radius:16px;
+      padding:16px; min-height:98px; display:flex; flex-direction:column; gap:8px
+    }
+    .stat small{color:var(--muted); letter-spacing:.3px}
+    .big{font-size: clamp(18px, 4.2vw, 28px); font-weight:800; color:#fff}
+
+    .hint{margin-top:12px; color:var(--muted); font-size:12px}
+    .badge{
+      display:inline-flex; align-items:center; gap:8px; font-weight:700; letter-spacing:.3px;
+      color:#052e16; background:linear-gradient(90deg,#86efac,#34d399); padding:8px 12px; border-radius:999px; font-size:12px
+    }
+    .row{display:flex; align-items:center; justify-content:space-between; gap:12px}
+    .right{ text-align:right }
+    .brandbar{display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:8px}
+    .chip{background:#0b1220; border:1px solid rgba(148,163,184,.28); color:#cbd5e1; padding:6px 10px; border-radius:999px; font-size:12px}
+    .muted{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 class="title">
+      <span class="brand">HELPCRED</span>
+      <span class="subtitle">Simulação de empréstimo no cartão de crédito — Hipercard D+0</span>
+    </h1>
+
+    <div class="card">
+      <div class="brandbar">
+        <span class="badge">Comissão do operador: 4% (visível ao operador)</span>
+        <span class="chip">Taxas: Hipercard (Crédito à vista até 18x)</span>
+      </div>
+
+      <!-- FORM VISÍVEL AO OPERADOR: somente 2 campos -->
+      <div class="form">
+        <div>
+          <label for="valor">Valor do empréstimo (R$)</label>
+          <input id="valor" class="input" type="number" min="1" step="0.01" placeholder="Ex.: 1000,00" />
+        </div>
+        <div>
+          <label for="parcelas">Número de parcelas</label>
+          <select id="parcelas" class="select"></select>
+        </div>
+      </div>
+
+      <!-- RESULTADOS QUE O OPERADOR VÊ -->
+      <div class="results">
+        <div class="stat">
+          <small>Valor total a passar no cartão</small>
+          <div class="big" id="totalCartao">R$ 0,00</div>
+        </div>
+        <div class="stat">
+          <small>Valor por parcela</small>
+          <div class="big" id="valorParcela">R$ 0,00</div>
+        </div>
+        <div class="stat">
+          <small>Comissão do operador (4% líquido)</small>
+          <div class="big" id="comissao">R$ 0,00</div>
+        </div>
+      </div>
+
+      <p class="hint">O cálculo aplica <strong>10% líquido total</strong> sobre o valor solicitado (comissão Helpcred).
+        Desta comissão, <strong>4% é do operador</strong> (exibido) e <strong>6% é interno</strong> (oculto). O sistema faz gross‑up
+        para compensar a taxa da bandeira.
+      </p>
+
+      <!-- DEMAIS INFORMAÇÕES (OCULTAS DO OPERADOR) -->
+      <details style="display:none">
+        <summary>Detalhes técnicos</summary>
+        <div id="debug"></div>
+      </details>
+    </div>
+  </div>
+
+  <script>
+    // Tabela Hipercard (D+0) — crédito à vista até 18x (em %)
+    const HIPERCARD = {
+      "Crédito à vista": 3.44,
+      "2x": 5.31,
+      "3x": 6.02,
+      "4x": 6.74,
+      "5x": 7.44,
+      "6x": 8.15,
+      "7x": 9.54,
+      "8x": 10.23,
+      "9x": 10.91,
+      "10x": 11.57,
+      "11x": 12.57,
+      "12x": 12.91,
+      "13x": 13.56,
+      "14x": 14.20,
+      "15x": 14.85,
+      "16x": 15.48,
+      "17x": 16.11,
+      "18x": 16.73,
+    };
+
+    // monta o select
+    const sel = document.getElementById('parcelas');
+    Object.keys(HIPERCARD).forEach(k=>{
+      const opt = document.createElement('option');
+      opt.value = k; opt.textContent = k; sel.appendChild(opt);
+    });
+    sel.value = '10x';
+
+    const fmt = new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'});
+
+    function calcular(){
+      const brutoInput = parseFloat(document.getElementById('valor').value.replace(',','.')) || 0;
+      const plano = sel.value;
+      const taxa = (HIPERCARD[plano] || 0) / 100; // decimal
+      const parcelas = plano === 'Crédito à vista' ? 1 : parseInt(plano);
+
+      // 4% líquido sobre o valor solicitado
+      const liquidoDesejado = brutoInput * 1.10; // 10% líquido total (Helpcred)
+
+      // Gross-up para compensar a taxa da bandeira: total a passar no cartão
+      const totalCartao = taxa < 1 ? (liquidoDesejado / (1 - taxa)) : 0;
+      const valorParcela = parcelas > 0 ? (totalCartao / parcelas) : 0;
+
+      // Comissão do vendedor: 4% do valor solicitado (líquido)
+      const comissao = brutoInput * 0.04;
+
+      document.getElementById('totalCartao').textContent = fmt.format(totalCartao || 0);
+      document.getElementById('valorParcela').textContent = fmt.format(valorParcela || 0);
+      document.getElementById('comissao').textContent = fmt.format(comissao || 0);
+
+      // (debug oculto)
+      const taxaReais = totalCartao * taxa;
+      const recebLiquido = totalCartao - taxaReais; // deve ≈ liquidoDesejado
+      const dbg = `taxa: ${(taxa*100).toFixed(2)}% | parcelas: ${parcelas}\n`+
+                  `líquido alvo: ${fmt.format(liquidoDesejado)} | taxa descontada: ${fmt.format(taxaReais)}\n`+
+                  `líquido após taxa: ${fmt.format(recebLiquido)}`;
+      document.getElementById('debug').textContent = dbg;
+    }
+
+    document.getElementById('valor').addEventListener('input', calcular);
+    document.getElementById('parcelas').addEventListener('change', calcular);
+
+    // valores padrão para demonstração
+    document.getElementById('valor').value = 1000;
+    calcular();
+  </script>
+</body>
+</html>
